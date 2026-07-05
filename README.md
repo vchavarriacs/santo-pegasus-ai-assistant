@@ -15,11 +15,11 @@ El agente permite a desarrolladores y nuevos integrantes de Santo Pegasus consul
 ```
 Usuario (chat) → n8n Chat Trigger
                      ↓
-              Embedding (OpenAI)
+        Embedding de la consulta (Cohere)
                      ↓
           Qdrant Vector Store (top-4 chunks)
                      ↓
-         AI Agent (LLM + contexto recuperado)
+      AI Agent (Gemini + contexto recuperado)
                      ↓
               Respuesta fundamentada
 ```
@@ -28,13 +28,15 @@ Usuario (chat) → n8n Chat Trigger
 
 | Componente | Tecnología |
 |---|---|
-| Orquestación RAG | n8n |
+| Orquestación RAG | n8n (AI Agent + LangChain nodes) |
 | Vector Store | Qdrant |
-| Embeddings | OpenAI text-embedding-3-small |
-| LLM | OpenAI GPT-4o / Claude |
+| Embeddings | Cohere `embed-multilingual-v3.0` (1024 dims) |
+| LLM | Google Gemini 2.5 Flash |
 | Infra | OCI VM ARM Ampere (Always Free) |
 | Tunneling | Cloudflare Tunnel |
 | Contenedores | Docker Compose |
+
+> **Nota:** los parámetros del pipeline RAG (chunk size 512, overlap 50, K=4) siguen los estándares internos definidos en la propia Guía de Ingeniería Back-end de Santo Pegasus.
 
 ## Base de conocimiento
 
@@ -50,7 +52,8 @@ Los documentos de Santo Pegasus indexados son:
 
 ### Requisitos previos
 - Docker y Docker Compose instalados
-- Clave de API de OpenAI
+- Clave de API de Cohere (gratuita — para embeddings): https://dashboard.cohere.com/api-keys
+- Clave de API de Google Gemini (gratuita — para el LLM): https://aistudio.google.com/app/apikey
 
 ### 1. Clonar el repositorio
 ```bash
@@ -77,7 +80,8 @@ python scripts/ingest.py
 
 ### 5. Importar el workflow en n8n
 - Acceder a `http://localhost:5678`
-- Importar `n8n/workflow.json`
+- Importar `n8n/workflow.json` (menú **⋯** → *Import from File*)
+- Asignar credenciales en los nodos: **Google Gemini Chat Model** (API key de Gemini), **Cohere Embeddings** (API key de Cohere) y **Qdrant Vector Store** (URL: `http://qdrant:6333`, sin API key)
 - Activar el workflow
 
 ### 6. Probar el agente

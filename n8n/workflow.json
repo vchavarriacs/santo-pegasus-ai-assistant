@@ -1,0 +1,101 @@
+{
+  "name": "Santo Pegasus RAG Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 280],
+      "webhookId": "a1b2c3d4-0001-0001-0001-000000000099"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres el asistente de conocimiento interno de Santo Pegasus Soluciones.\n\nTu rol es responder preguntas sobre los documentos internos de la empresa:\n- Manual de Onboarding para Nuevos Desarrolladores\n- Guía Oficial de Ingeniería Back-end\n- Guía Oficial de Ingeniería Front-end\n- Protocolo de Respuesta a Incidentes y Post-Mortems\n- Arquitectura de Microservicios y Mapa de Dominios\n\nInstrucciones:\n1. Usa siempre la herramienta 'santo_pegasus_knowledge_base' para buscar información antes de responder.\n2. Responde en español, de forma clara, precisa y estructurada.\n3. Si la pregunta no está cubierta en los documentos, dilo honestamente.\n4. Cita la fuente del documento cuando sea relevante."
+        }
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [280, 280]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [60, 500]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "santo_pegasus_knowledge_base",
+        "toolDescription": "Base de conocimiento interna de Santo Pegasus Soluciones. Busca información en los documentos oficiales de la empresa: onboarding, ingeniería back-end y front-end, protocolo de incidentes y arquitectura de microservicios. Úsala para responder cualquier pregunta sobre procesos, estándares técnicos y políticas internas.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "santo_pegasus_kb",
+          "mode": "list"
+        },
+        "options": {
+          "topK": 4,
+          "contentPayloadKey": "text"
+        }
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Qdrant Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [280, 500]
+    },
+    {
+      "parameters": {
+        "model": "embed-multilingual-v3.0",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Cohere Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [500, 500]
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "ai_tool": [
+        [{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]
+      ]
+    },
+    "Cohere Embeddings": {
+      "ai_embedding": [
+        [{ "node": "Qdrant Vector Store", "type": "ai_embedding", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

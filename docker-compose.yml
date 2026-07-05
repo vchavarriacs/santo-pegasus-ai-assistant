@@ -15,7 +15,8 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - WEBHOOK_URL=https://${N8N_HOST}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - N8N_TRUST_PROXY=true
+      - COHERE_API_KEY=${COHERE_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./knowledge_base:/home/node/knowledge_base:ro
