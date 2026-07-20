@@ -4,6 +4,8 @@ Agente de inteligencia artificial con arquitectura RAG (Retrieval-Augmented Gene
 
 Desarrollado como entrega del **Challenge AI for Tech — Alura**.
 
+**🚀 Demo desplegada en OCI:** https://n8n-challenge.ren-lab-content.uk (chat público, requiere las credenciales compartidas en la entrega)
+
 ---
 
 ## Descripción
@@ -31,7 +33,7 @@ Usuario (chat) → n8n Chat Trigger
 | Orquestación RAG | n8n (AI Agent + LangChain nodes) |
 | Vector Store | Qdrant |
 | Embeddings | Cohere `embed-multilingual-v3.0` (1024 dims) |
-| LLM | Google Gemini 2.5 Flash |
+| LLM | Google Gemini `gemini-2.5-flash-lite` |
 | Infra | OCI VM ARM Ampere (Always Free) |
 | Tunneling | Cloudflare Tunnel |
 | Contenedores | Docker Compose |
@@ -98,7 +100,25 @@ Acceder al chat en la URL generada por n8n y hacer preguntas sobre la documentac
 
 ## Deploy en OCI
 
-Ver [`oci/setup.sh`](oci/setup.sh) para instrucciones de provisioning en Oracle Cloud Infrastructure (región Mexico Central - Queretaro).
+Desplegado en una VM **Always Free** de Oracle Cloud Infrastructure (Oracle Linux 9, ARM Ampere, región Mexico Central - Queretaro), con n8n y Qdrant en Docker Compose y acceso público vía Cloudflare Tunnel (como servicio systemd, persistente entre reinicios).
+
+Ver [`oci/setup.sh`](oci/setup.sh) para el script de provisioning completo.
+
+### Notas sobre disponibilidad de modelos gratuitos
+
+Los modelos gratuitos de LLM/embeddings cambian de disponibilidad según la cuenta y la fecha. Antes de fijar un modelo en el workflow, verifica cuáles responden con tu propia API key:
+
+```bash
+# Modelos de Gemini disponibles para tu key
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=TU_KEY" | grep '"name"'
+
+# Prueba directa de un modelo específico
+curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=TU_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"contents":[{"parts":[{"text":"di hola"}]}]}'
+```
+
+En este proyecto, `gemini-2.5-flash` y toda la familia `gemini-2.0-*` devolvieron error 404/429 ("no longer available to new users" / cuota 0) con la API key usada en producción, mientras que `gemini-2.5-flash-lite` funcionó sin problema. Del lado de Cohere, el nodo de embeddings puede caer por defecto en `embed-english-v2.0` (retirado) si el campo Model no se fija explícitamente — siempre confirma que sea `embed-multilingual-v3.0`, el mismo usado en `scripts/ingest.py`.
 
 ---
 
