@@ -1,0 +1,132 @@
+{
+  "name": "Santo Pegasus RAG Agent Expansion",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {}
+      },
+      "id": "9db6be7f-359e-4a59-8cfa-2593c433e5bf",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        -16
+      ],
+      "webhookId": "f5149e0b-ed41-4521-9e6d-39e42de9819d"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres el asistente de conocimiento interno de Santo Pegasus Soluciones.\n\nTu rol es responder preguntas sobre los documentos internos de la empresa:\n- Manual de Onboarding para Nuevos Desarrolladores\n- Guía Oficial de Ingeniería Back-end\n- Guía Oficial de Ingeniería Front-end\n- Protocolo de Respuesta a Incidentes y Post-Mortems\n- Arquitectura de Microservicios y Mapa de Dominios\n\nInstrucciones:\n1. Usa siempre la herramienta 'santo_pegasus_knowledge_base' para buscar información antes de responder.\n2. Responde en español, de forma clara, precisa y estructurada.\n3. Si la pregunta no está cubierta en los documentos, dilo honestamente.\n4. Cita la fuente del documento cuando sea relevante."
+        }
+      },
+      "id": "121e79e1-4640-482f-867f-c46687027b78",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        208,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-latest",
+        "options": {}
+      },
+      "id": "daac35a1-ad62-4730-879a-82054b8cdb9f",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        208
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XX5rWmmZ6u2jaj5D",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Base de conocimiento interna de Santo Pegasus Soluciones. Busca información en los documentos oficiales de la empresa: onboarding, ingeniería back-end y front-end, protocolo de incidentes y arquitectura de microservicios. Recupera los 20 fragmentos más relevantes semánticamente y los reordena con un modelo de reranking para devolver los 4 más precisos. Úsala para responder cualquier pregunta sobre procesos, estándares técnicos y políticas internas.",
+        "workflowId": {
+          "__rl": true,
+          "value": "SqrNttTcmFZ01ppV",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SqrNttTcmFZ01ppV",
+          "cachedResultName": "RAG Retrieval con Reranking"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ $fromAI('query', 'La pregunta del usuario, en lenguaje natural, tal como fue formulada', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      },
+      "id": "c2f1a002-0002-0002-0002-000000000002",
+      "name": "Knowledge Base (rerank)",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        208
+      ]
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Base (rerank)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

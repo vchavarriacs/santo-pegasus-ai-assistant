@@ -1,0 +1,106 @@
+{
+  "name": "Santo Pegasus Feedback Endpoint",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "santo-pegasus-feedback",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "f1e1a003-0003-0003-0003-000000000001",
+      "name": "Feedback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "f1e1a003-0003-0003-0003-000000000099"
+    },
+    {
+      "parameters": {
+        "jsCode": "function uuidv4() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\nconst body = $json.body || {};\nreturn [{\n  json: {\n    id: uuidv4(),\n    timestamp: new Date().toISOString(),\n    sessionId: body.sessionId || null,\n    question: body.question || null,\n    answer: body.answer || null,\n    rating: body.rating || null\n  }\n}];\n"
+      },
+      "id": "f1e1a003-0003-0003-0003-000000000002",
+      "name": "Build Feedback Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://qdrant:6333/collections/santo_pegasus_feedback/points",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { points: [ { id: $json.id, vector: [0], payload: { timestamp: $json.timestamp, sessionId: $json.sessionId, question: $json.question, answer: $json.answer, rating: $json.rating } } ] } }}",
+        "options": {}
+      },
+      "id": "f1e1a003-0003-0003-0003-000000000003",
+      "name": "Store in Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: true } }];"
+      },
+      "id": "f1e1a003-0003-0003-0003-000000000004",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Feedback Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Feedback Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Feedback Record": {
+      "main": [
+        [
+          {
+            "node": "Store in Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

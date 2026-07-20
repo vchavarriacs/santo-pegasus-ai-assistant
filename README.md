@@ -98,6 +98,52 @@ Acceder al chat en la URL generada por n8n y hacer preguntas sobre la documentac
 - *"¿Cuál es el plan 30/60/90 días para nuevos desarrolladores?"*
 - *"¿Qué severidad tiene un incidente que afecta a todos los usuarios?"*
 
+## Funcionalidades avanzadas (expansión post-entrega base)
+
+Sobre la base funcional del challenge, se agregaron tres mejoras opcionales. Los workflows de esta expansión están en:
+
+- [`n8n/workflow-expansion.json`](n8n/workflow-expansion.json) — agente principal, usa el sub-workflow de reranking como herramienta
+- [`n8n/subworkflow-rerank.json`](n8n/subworkflow-rerank.json) — retrieval ampliado (top-20) + Cohere Rerank (top-4)
+- [`n8n/workflow-feedback.json`](n8n/workflow-feedback.json) — endpoint que registra el feedback 👍/👎
+
+(El [`n8n/workflow.json`](n8n/workflow.json) original, con retrieval directo K=4, se mantiene como la versión base del challenge.)
+
+### 1. Reranking
+
+En lugar de devolver directamente los top-4 chunks de la búsqueda vectorial, el agente usa un sub-workflow (`RAG Retrieval con Reranking`, invocado como *Call n8n Sub-Workflow Tool*) que:
+
+1. Genera el embedding de la pregunta (Cohere `embed-multilingual-v3.0`)
+2. Recupera los **20** candidatos más cercanos en Qdrant (búsqueda amplia)
+3. Reordena esos 20 con **Cohere Rerank** (`rerank-v3.5`), comparando la pregunta completa contra cada candidato
+4. Devuelve al agente solo los **4** fragmentos más relevantes tras el reranking
+
+Esto mejora la precisión de la recuperación frente al top-4 directo: en las pruebas, permitió que el agente combinara contexto de varias fuentes relevantes (p. ej. Back-end + Front-end + Onboarding) en una sola respuesta, en vez de quedarse solo con el primer documento que aparecía en la búsqueda vectorial simple.
+
+### 2. Feedback del usuario
+
+La interfaz de chat (`web/index.html`) muestra botones **👍 Útil / 👎 No útil** bajo cada respuesta. Al hacer clic, se envía `{sessionId, question, answer, rating}` a un workflow dedicado (`Santo Pegasus Feedback Endpoint`) que lo guarda como punto en una colección de Qdrant (`santo_pegasus_feedback`), permitiendo auditar qué respuestas fueron útiles.
+
+Consultar el feedback almacenado:
+```bash
+curl -s -X POST http://localhost:6333/collections/santo_pegasus_feedback/points/scroll \
+  -H 'Content-Type: application/json' -d '{"limit": 50, "with_payload": true}'
+```
+
+### 3. Interfaz de chat propia
+
+`web/index.html` es una página estática (sin frameworks ni build step) que consume directamente los webhooks públicos de n8n:
+- Indica explícitamente que se trata de un agente de IA, no una persona
+- Mantiene historial de conversación durante la sesión
+- Muestra los botones de feedback descritos arriba
+
+Para usarla localmente:
+```bash
+cd web
+python -m http.server 8765
+# abrir http://localhost:8765
+```
+Antes de desplegarla, edita las constantes `CHAT_WEBHOOK_URL` y `FEEDBACK_WEBHOOK_URL` al inicio del `<script>` con las URLs de tu propia instancia de n8n.
+
 ## Deploy en OCI
 
 Desplegado en una VM **Always Free** de Oracle Cloud Infrastructure (Oracle Linux 9, ARM Ampere, región Mexico Central - Queretaro), con n8n y Qdrant en Docker Compose y acceso público vía Cloudflare Tunnel (como servicio systemd, persistente entre reinicios).
@@ -119,6 +165,8 @@ curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flas
 ```
 
 En este proyecto, `gemini-2.5-flash` y toda la familia `gemini-2.0-*` devolvieron error 404/429 ("no longer available to new users" / cuota 0) con la API key usada en producción, mientras que `gemini-2.5-flash-lite` funcionó sin problema. Del lado de Cohere, el nodo de embeddings puede caer por defecto en `embed-english-v2.0` (retirado) si el campo Model no se fija explícitamente — siempre confirma que sea `embed-multilingual-v3.0`, el mismo usado en `scripts/ingest.py`.
+
+**Importante:** el free tier de Gemini limita `gemini-2.5-flash-lite` a solo **20 solicitudes por día** por proyecto (no por minuto — el mensaje de error de Google es engañoso al respecto). Cada modelo tiene su propia cuota independiente, así que si la agotas probando, cambiar a otro modelo (`gemini-flash-latest`, `gemini-3.5-flash`, etc.) da acceso a una cuota fresca sin esperar. Para uso más intensivo, considera Cohere (`command-a-03-2025`) como chat model alternativo — en las pruebas resultó más tolerante a ráfagas de solicitudes.
 
 ---
 
